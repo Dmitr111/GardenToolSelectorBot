@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from .models import *
 from .repositories import *
-from ..config import CONNECTIONSTRING
+from ..config import CONNECTIONSTRING, ADMIN_IDS
 
 engine = create_async_engine(url=CONNECTIONSTRING)
 async_session = async_sessionmaker(engine, expire_on_commit=False)
@@ -45,12 +45,16 @@ async def init_db():
             await session.commit()
 
         ur = UserRepository(session)
-        admin = await ur.get_by_telegram_id(1178725484)
+        for admin_id in ADMIN_IDS:
+            admin = await ur.get_by_telegram_id(admin_id)
 
-        if not admin:
-            session.add(admin)
-            await session.commit()
+            if not admin:
+                admin = User(username=None, telegram_id=admin_id, proficiency_level_id=1, is_admin=True)
+                session.add(admin)
+            elif not admin.is_admin:
+                admin.is_admin = True
 
+        await session.commit()
 
 
 async def get_session() -> async_sessionmaker:
